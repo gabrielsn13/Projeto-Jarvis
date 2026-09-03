@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Jarvis.App/Jarvis.App.csproj" />
+    <Project Path="src/Jarvis.Application/Jarvis.Application.csproj" />
+    <Project Path="src/Jarvis.Domain/Jarvis.Domain.csproj" />
+    <Project Path="src/Jarvis.Infrastructure/Jarvis.Infrastructure.csproj" />
+  </Folder>
+</Solution>

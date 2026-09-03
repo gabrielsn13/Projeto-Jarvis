@@ -1,0 +1,14 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Local data
+*.db
+*.db-shm
+*.db-wal
