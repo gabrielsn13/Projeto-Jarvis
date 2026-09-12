@@ -4,5 +4,5 @@ namespace Jarvis.Application.Abstractions;
 
 public interface IChatService
 {
-    Task<ChatResponse> SendMessageAsync(string userMessage, CancellationToken cancellationToken = default);
+    Task<ChatResponse> SendMessageAsync(string sessionId, string userMessage, CancellationToken cancellationToken = default);
 }

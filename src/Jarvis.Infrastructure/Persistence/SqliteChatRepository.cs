@@ -5,9 +5,9 @@ using Microsoft.Extensions.Options;
 
 namespace Jarvis.Infrastructure.Persistence;
 
-public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : IChatRepository
+public sealed class SqliteChatHistoryRepository(IOptions<SqliteOptions> options) : IChatHistoryRepository
 {
-    private readonly string _connectionString = $"Data Source={options.Value.DatabasePath}";
+    private readonly string _connectionString = options.Value.ConnectionString;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -17,8 +17,9 @@ public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : ICha
         var command = connection.CreateCommand();
         command.CommandText =
             """
-            CREATE TABLE IF NOT EXISTS chat_messages (
+            CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 created_at TEXT NOT NULL
@@ -28,7 +29,7 @@ public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : ICha
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task AddMessageAsync(ChatMessage message, CancellationToken cancellationToken = default)
+    public async Task AddMessageAsync(string sessionId, ChatMessage message, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -36,10 +37,11 @@ public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : ICha
         var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO chat_messages (role, content, created_at)
-            VALUES ($role, $content, $createdAt);
+            INSERT INTO messages (session_id, role, content, created_at)
+            VALUES ($sessionId, $role, $content, $createdAt);
             """;
 
+        command.Parameters.AddWithValue("$sessionId", sessionId);
         command.Parameters.AddWithValue("$role", message.Role);
         command.Parameters.AddWithValue("$content", message.Content);
         command.Parameters.AddWithValue("$createdAt", message.CreatedAt.UtcDateTime.ToString("O"));
@@ -47,7 +49,7 @@ public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : ICha
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ChatMessage>> GetRecentMessagesAsync(int limit, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ChatMessage>> GetRecentMessagesAsync(string sessionId, int limit, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -56,10 +58,12 @@ public sealed class SqliteChatRepository(IOptions<JarvisOptions> options) : ICha
         command.CommandText =
             """
             SELECT role, content, created_at
-            FROM chat_messages
+            FROM messages
+            WHERE session_id = $sessionId
             ORDER BY id DESC
             LIMIT $limit;
             """;
+        command.Parameters.AddWithValue("$sessionId", sessionId);
         command.Parameters.AddWithValue("$limit", limit);
 
         var result = new List<ChatMessage>();

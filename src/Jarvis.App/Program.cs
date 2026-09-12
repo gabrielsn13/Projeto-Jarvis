@@ -10,6 +10,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddLogging(logging =>
 {
     logging.ClearProviders();
+    logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
     logging.AddConsole();
 });
 
@@ -22,8 +23,9 @@ using var host = builder.Build();
 using var scope = host.Services.CreateScope();
 var provider = scope.ServiceProvider;
 var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
-var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatRepository>();
+var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatHistoryRepository>();
 var chatService = provider.GetRequiredService<IChatService>();
+const string sessionId = "default";
 
 await repository.InitializeAsync();
 
@@ -44,8 +46,16 @@ while (true)
         continue;
     }
 
-    var response = await chatService.SendMessageAsync(input);
-    Console.WriteLine($"Jarvis: {response.Content}");
+    try
+    {
+        var response = await chatService.SendMessageAsync(sessionId, input);
+        Console.WriteLine($"Jarvis: {response.Content}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        logger.LogWarning(ex, "Falha no fluxo de chat.");
+        Console.WriteLine($"Jarvis: {ex.Message}");
+    }
 }
 
 logger.LogInformation("JARVIS finalizado.");
