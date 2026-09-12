@@ -5,4 +5,7 @@
     <Project Path="src/Jarvis.Domain/Jarvis.Domain.csproj" />
     <Project Path="src/Jarvis.Infrastructure/Jarvis.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Jarvis.Application.Tests/Jarvis.Application.Tests.csproj" />
+  </Folder>
 </Solution>
