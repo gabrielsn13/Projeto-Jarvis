@@ -38,6 +38,9 @@ else
     builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
 }
 
+// ✅ Registra PowerShell concreto sempre (necessário para fallback no Edge)
+builder.Services.AddSingleton<PowerShellTextToSpeechService>();
+
 // TTS
 if (string.Equals(ttsProvider, "Edge", StringComparison.OrdinalIgnoreCase))
 {
@@ -45,7 +48,9 @@ if (string.Equals(ttsProvider, "Edge", StringComparison.OrdinalIgnoreCase))
 }
 else
 {
-    builder.Services.AddSingleton<ITextToSpeechService, PowerShellTextToSpeechService>();
+    // Reusa o mesmo singleton concreto também quando PowerShell é provider principal
+    builder.Services.AddSingleton<ITextToSpeechService>(sp =>
+        sp.GetRequiredService<PowerShellTextToSpeechService>());
 }
 
 // Estado de voz

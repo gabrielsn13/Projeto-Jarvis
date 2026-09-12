@@ -7,9 +7,24 @@ namespace Jarvis.App.Services;
 
 public sealed class EdgeTextToSpeechService(
     IOptions<VoiceOptions> optionsAccessor,
-    ILogger<EdgeTextToSpeechService> logger) : ITextToSpeechService
+    ILogger<EdgeTextToSpeechService> logger,
+    PowerShellTextToSpeechService powerShellTts // fallback
+) : ITextToSpeechService
 {
-    public async Task SpeakAsync(string text, CancellationToken cancellationToken = default)
+    public async Task SynthesizeAsync(string text, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await SpeakWithEdgeAndDeleteAsync(text, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Edge TTS falhou. Aplicando fallback para PowerShell TTS.");
+            await powerShellTts.SynthesizeAsync(text, cancellationToken);
+        }
+    }
+
+    private async Task SpeakWithEdgeAndDeleteAsync(string text, CancellationToken cancellationToken)
     {
         var opts = optionsAccessor.Value;
         if (string.IsNullOrWhiteSpace(text))
@@ -57,13 +72,10 @@ public sealed class EdgeTextToSpeechService(
             throw new InvalidOperationException("Edge TTS não retornou arquivo de áudio válido.");
 
         var audioPath = stdout;
-        logger.LogInformation("TTS gerado em {Path}", audioPath);
+        logger.LogInformation("TTS Edge gerado em {Path}", audioPath);
 
         await PlayAndDeleteAsync(audioPath, cancellationToken);
     }
-
-    public Task SynthesizeAsync(string text, CancellationToken cancellationToken = default)
-        => SpeakAsync(text, cancellationToken);
 
     private static async Task PlayAndDeleteAsync(string audioPath, CancellationToken ct)
     {
