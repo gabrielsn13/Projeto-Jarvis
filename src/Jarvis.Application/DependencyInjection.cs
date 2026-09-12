@@ -9,6 +9,8 @@ public static class DependencyInjection
     public static IServiceCollection AddJarvisApplication(this IServiceCollection services)
     {
         services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<ICommandService, CommandService>();
+        services.AddSingleton<ICommandCatalog, AllowlistCommandCatalog>();
         return services;
     }
 }
