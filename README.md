@@ -6,8 +6,8 @@ Assistente pessoal local em .NET 8, com foco em segurança, previsibilidade e ev
 
 - ✅ Fase A (fundação + conversação base) concluída
 - ✅ Fase B (comandos locais seguros) concluída
-- 🔄 Fase C (memória de sessão e contexto curto) em andamento
-- ⏭️ Próximo passo: Fase D (voz STT/TTS)
+- ✅ Fase C (memória de sessão e contexto curto) concluída
+- 🔄 Fase D (voz STT/TTS sem hotword) em andamento
 
 ## Stack inicial
 
@@ -197,6 +197,16 @@ dotnet run --project /home/runner/work/Projeto-Jarvis/Projeto-Jarvis/src/Jarvis.
 ```
 
 Digite mensagens no terminal. Para sair, use `sair`.
+
+Comandos multimodais (Fase D):
+
+- `/voice on` ativa modo voz
+- `/voice off` desativa modo voz
+- `/voice` alterna o modo voz
+- `/ptt` inicia captura push-to-talk (entrada explícita)
+- `/tts on` ativa síntese de voz
+- `/tts off` desativa síntese de voz
+- `/new` inicia nova sessão sem perder o funcionamento do restante do fluxo
 
 ### Comandos locais permitidos (Parte 2)
 

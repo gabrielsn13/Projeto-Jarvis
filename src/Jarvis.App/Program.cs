@@ -1,9 +1,12 @@
 using Jarvis.Application;
 using Jarvis.Application.Abstractions;
+using Jarvis.App;
+using Jarvis.App.Services;
 using Jarvis.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -17,6 +20,14 @@ builder.Services.AddLogging(logging =>
 builder.Services
     .AddJarvisApplication()
     .AddJarvisInfrastructure(builder.Configuration);
+builder.Services.Configure<VoiceOptions>(builder.Configuration.GetSection(VoiceOptions.SectionName));
+builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
+builder.Services.AddSingleton<ITextToSpeechService, PowerShellTextToSpeechService>();
+builder.Services.AddSingleton<IVoiceModeState>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<VoiceOptions>>().Value;
+    return new Jarvis.Application.Services.VoiceModeState(options.Enabled, options.TtsEnabled);
+});
 
 using var host = builder.Build();
 
@@ -24,12 +35,12 @@ using var scope = host.Services.CreateScope();
 var provider = scope.ServiceProvider;
 var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
 var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatHistoryRepository>();
-var inputHandlingService = provider.GetRequiredService<IInputHandlingService>();
-const string sessionId = "default";
+var multimodalInputService = provider.GetRequiredService<IMultimodalInputService>();
+var sessionId = "default";
 
 await repository.InitializeAsync();
 
-logger.LogInformation("JARVIS iniciado. Digite sua mensagem (ou 'sair').");
+logger.LogInformation("JARVIS iniciado. Digite sua mensagem (ou 'sair'). Comandos: /voice [on|off], /tts <on|off>, /ptt, /new");
 
 while (true)
 {
@@ -48,7 +59,8 @@ while (true)
 
     try
     {
-        var result = await inputHandlingService.HandleAsync(sessionId, input);
+        var result = await multimodalInputService.HandleAsync(sessionId, input);
+        sessionId = result.SessionId;
         Console.WriteLine($"Jarvis: {result.Message}");
     }
     catch (InvalidOperationException ex)

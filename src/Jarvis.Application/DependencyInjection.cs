@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<ICommandService, CommandService>();
         services.AddScoped<IInputHandlingService, InputHandlingService>();
+        services.AddScoped<IMultimodalInputService, MultimodalInputService>();
         services.AddSingleton<IIntentRouter, IntentRouter>();
         services.AddSingleton<ICommandCatalog, AllowlistCommandCatalog>();
         return services;
