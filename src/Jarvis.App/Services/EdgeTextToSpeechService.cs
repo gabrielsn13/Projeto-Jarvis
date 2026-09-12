@@ -8,7 +8,8 @@ namespace Jarvis.App.Services;
 public sealed class EdgeTextToSpeechService(
     IOptions<VoiceOptions> optionsAccessor,
     ILogger<EdgeTextToSpeechService> logger,
-    PowerShellTextToSpeechService powerShellTts // fallback
+    PowerShellTextToSpeechService powerShellTts,
+    IVoiceRuntimeSettings runtime
 ) : ITextToSpeechService
 {
     public async Task SynthesizeAsync(string text, CancellationToken cancellationToken = default)
@@ -16,6 +17,10 @@ public sealed class EdgeTextToSpeechService(
         try
         {
             await SpeakWithEdgeAndDeleteAsync(text, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -36,10 +41,19 @@ public sealed class EdgeTextToSpeechService(
         if (!File.Exists(script))
             throw new InvalidOperationException($"Script TTS não encontrado: {script}");
 
-        var voice = string.IsNullOrWhiteSpace(opts.EdgeVoice) ? "pt-BR-AntonioNeural" : opts.EdgeVoice!;
-        var rate = string.IsNullOrWhiteSpace(opts.EdgeRate) ? "+0%" : opts.EdgeRate!;
+        // prioridade: runtime -> appsettings
+        var voice = !string.IsNullOrWhiteSpace(runtime.EdgeVoice)
+            ? runtime.EdgeVoice
+            : (string.IsNullOrWhiteSpace(opts.EdgeVoice) ? "pt-BR-AntonioNeural" : opts.EdgeVoice!);
+
+        var rate = !string.IsNullOrWhiteSpace(runtime.EdgeRate)
+            ? runtime.EdgeRate
+            : (string.IsNullOrWhiteSpace(opts.EdgeRate) ? "+0%" : opts.EdgeRate!);
+
         var volume = string.IsNullOrWhiteSpace(opts.EdgeVolume) ? "+0%" : opts.EdgeVolume!;
         var pitch = string.IsNullOrWhiteSpace(opts.EdgePitch) ? "+0Hz" : opts.EdgePitch!;
+
+        logger.LogDebug("Edge TTS params voice={Voice}, rate={Rate}, volume={Volume}, pitch={Pitch}", voice, rate, volume, pitch);
 
         var args =
             $"\"{script}\" --text \"{EscapeArg(text)}\" --voice \"{voice}\" --rate \"{rate}\" --volume \"{volume}\" --pitch \"{pitch}\"";
@@ -128,5 +142,5 @@ public sealed class EdgeTextToSpeechService(
     }
 
     private static string EscapeArg(string value)
-        => value.Replace("\"", "\\\"");
+        => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }

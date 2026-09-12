@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Jarvis.Application.Abstractions;
 using Jarvis.Application.Models;
 using Microsoft.Extensions.Logging;
@@ -9,8 +10,11 @@ public sealed class MultimodalInputService(
     ISpeechToTextService speechToTextService,
     ITextToSpeechService textToSpeechService,
     IVoiceModeState voiceModeState,
+    IVoiceRuntimeSettings voiceRuntimeSettings,
     ILogger<MultimodalInputService> logger) : IMultimodalInputService
 {
+    private static readonly Regex VoiceRateRegex = new(@"^[+-]?\d+%$", RegexOptions.Compiled);
+
     public async Task<MultimodalInputResult> HandleAsync(string sessionId, string input, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
@@ -24,6 +28,7 @@ public sealed class MultimodalInputService(
     private async Task<MultimodalInputResult> HandleCoreAsync(string sessionId, string input, CancellationToken cancellationToken)
     {
         var trimmedInput = (input ?? string.Empty).Trim();
+
         if (string.Equals(trimmedInput, "/new", StringComparison.OrdinalIgnoreCase))
         {
             var newSessionId = Guid.NewGuid().ToString("N");
@@ -80,6 +85,77 @@ public sealed class MultimodalInputService(
     private MultimodalInputResult HandleVoiceCommand(string sessionId, string input)
     {
         var segments = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        // /voice list
+        if (segments.Length == 2 && segments[1].Equals("list", StringComparison.OrdinalIgnoreCase))
+        {
+            var list = string.Join(Environment.NewLine, voiceRuntimeSettings.AvailableVoices.Select(v => $"- {v}"));
+            return new MultimodalInputResult
+            {
+                Message = $"Vozes disponíveis:{Environment.NewLine}{list}",
+                SessionId = sessionId
+            };
+        }
+
+        // /voice set <nome>
+        if (segments.Length >= 3 && segments[1].Equals("set", StringComparison.OrdinalIgnoreCase))
+        {
+            var requestedVoice = string.Join(' ', segments.Skip(2)).Trim();
+            if (string.IsNullOrWhiteSpace(requestedVoice))
+            {
+                return new MultimodalInputResult
+                {
+                    Message = "Uso: /voice set <nome-da-voz>",
+                    SessionId = sessionId
+                };
+            }
+
+            var match = voiceRuntimeSettings.AvailableVoices
+                .FirstOrDefault(v => v.Equals(requestedVoice, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null)
+            {
+                return new MultimodalInputResult
+                {
+                    Message = $"Voz inválida: {requestedVoice}. Use /voice list.",
+                    SessionId = sessionId
+                };
+            }
+
+            voiceRuntimeSettings.EdgeVoice = match;
+            logger.LogInformation("VoiceRuntimeAlterada Voice={Voice}", match);
+
+            return new MultimodalInputResult
+            {
+                Message = $"Voz alterada para: {match}",
+                SessionId = sessionId
+            };
+        }
+
+        // /voice rate <valor>
+        if (segments.Length == 3 && segments[1].Equals("rate", StringComparison.OrdinalIgnoreCase))
+        {
+            var rate = segments[2];
+            if (!VoiceRateRegex.IsMatch(rate))
+            {
+                return new MultimodalInputResult
+                {
+                    Message = "Rate inválido. Use: /voice rate <ex: +0%, +20%, -10%>",
+                    SessionId = sessionId
+                };
+            }
+
+            voiceRuntimeSettings.EdgeRate = rate;
+            logger.LogInformation("VoiceRuntimeRateAlterada Rate={Rate}", rate);
+
+            return new MultimodalInputResult
+            {
+                Message = $"Rate alterado para: {rate}",
+                SessionId = sessionId
+            };
+        }
+
+        // comportamento antigo: /voice (toggle), /voice on, /voice off
         if (segments.Length == 1)
         {
             voiceModeState.ToggleVoiceMode();
@@ -96,7 +172,7 @@ public sealed class MultimodalInputService(
         {
             return new MultimodalInputResult
             {
-                Message = "Uso: /voice [on|off]",
+                Message = "Uso: /voice [on|off] | /voice list | /voice set <voz> | /voice rate <valor>",
                 SessionId = sessionId
             };
         }

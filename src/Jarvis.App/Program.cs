@@ -60,6 +60,8 @@ builder.Services.AddSingleton<IVoiceModeState>(serviceProvider =>
     return new Jarvis.Application.Services.VoiceModeState(options.Enabled, options.TtsEnabled);
 });
 
+builder.Services.AddSingleton<Jarvis.Application.Abstractions.IVoiceRuntimeSettings, Jarvis.Application.Services.VoiceRuntimeSettings>();
+
 using var host = builder.Build();
 
 using var scope = host.Services.CreateScope();
