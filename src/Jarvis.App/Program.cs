@@ -3,113 +3,94 @@ using Jarvis.Application.Abstractions;
 using Jarvis.App;
 using Jarvis.App.Services;
 using Jarvis.Infrastructure.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddLogging(logging =>
-{
-    logging.ClearProviders();
-    logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-    logging.AddConsole();
-});
-
+// Services existentes
 builder.Services
     .AddJarvisApplication()
     .AddJarvisInfrastructure(builder.Configuration);
 
 builder.Services.Configure<VoiceOptions>(builder.Configuration.GetSection(VoiceOptions.SectionName));
 
-// Lê providers do bloco Voice
+// Providers
 var voiceSection = builder.Configuration.GetSection(VoiceOptions.SectionName);
 var sttProvider = voiceSection["SttProvider"] ?? "Console";
 var ttsProvider = voiceSection["TtsProvider"] ?? "PowerShell";
 
-// STT
 if (string.Equals(sttProvider, "Whisper", StringComparison.OrdinalIgnoreCase))
-{
     builder.Services.AddSingleton<ISpeechToTextService, WhisperSpeechToTextService>();
-}
 else
-{
     builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
-}
 
-// ✅ Registra PowerShell concreto sempre (necessário para fallback no Edge)
 builder.Services.AddSingleton<PowerShellTextToSpeechService>();
 
-// TTS
 if (string.Equals(ttsProvider, "Edge", StringComparison.OrdinalIgnoreCase))
-{
     builder.Services.AddSingleton<ITextToSpeechService, EdgeTextToSpeechService>();
-}
 else
-{
-    // Reusa o mesmo singleton concreto também quando PowerShell é provider principal
-    builder.Services.AddSingleton<ITextToSpeechService>(sp =>
-        sp.GetRequiredService<PowerShellTextToSpeechService>());
-}
+    builder.Services.AddSingleton<ITextToSpeechService>(sp => sp.GetRequiredService<PowerShellTextToSpeechService>());
 
-// Estado de voz
-builder.Services.AddSingleton<IVoiceModeState>(serviceProvider =>
+builder.Services.AddSingleton<IVoiceRuntimeSettings, Jarvis.Application.Services.VoiceRuntimeSettings>();
+
+builder.Services.AddSingleton<IVoiceModeState>(sp =>
 {
-    var options = serviceProvider.GetRequiredService<IOptions<VoiceOptions>>().Value;
+    var options = sp.GetRequiredService<IOptions<VoiceOptions>>().Value;
     return new Jarvis.Application.Services.VoiceModeState(options.Enabled, options.TtsEnabled);
 });
 
-builder.Services.AddSingleton<Jarvis.Application.Abstractions.IVoiceRuntimeSettings, Jarvis.Application.Services.VoiceRuntimeSettings>();
-
-using var host = builder.Build();
-
-using var scope = host.Services.CreateScope();
-var provider = scope.ServiceProvider;
-var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
-
-logger.LogInformation("STT provider selecionado: {Provider}", sttProvider);
-logger.LogInformation("TTS provider selecionado: {Provider}", ttsProvider);
-
-var repository = provider.GetRequiredService<IChatHistoryRepository>();
-var multimodalInputService = provider.GetRequiredService<IMultimodalInputService>();
-var sessionId = "default";
-
-await repository.InitializeAsync();
-
-logger.LogInformation("JARVIS iniciado. Digite sua mensagem (ou 'sair'). Comandos: /voice [on|off], /tts <on|off>, /ptt, /new");
-
-while (true)
+// CORS para Unity local
+builder.Services.AddCors(o =>
 {
-    Console.Write("Você: ");
-    var input = Console.ReadLine();
+    o.AddPolicy("unity-local", p => p
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowAnyOrigin());
+});
 
-    if (string.Equals(input, "sair", StringComparison.OrdinalIgnoreCase))
-    {
-        break;
-    }
+var app = builder.Build();
+app.UseCors("unity-local");
 
-    if (string.IsNullOrWhiteSpace(input))
-    {
-        continue;
-    }
-
-    try
-    {
-        var result = await multimodalInputService.HandleAsync(sessionId, input);
-        sessionId = result.SessionId;
-        Console.WriteLine($"Jarvis: {result.Message}");
-    }
-    catch (InvalidOperationException ex)
-    {
-        logger.LogWarning(ex, "Falha no fluxo de chat.");
-        Console.WriteLine($"Jarvis: {ex.Message}");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Erro inesperado no fluxo principal.");
-        Console.WriteLine("Jarvis: Ocorreu um erro inesperado. Veja os logs.");
-    }
+// init repositório
+using (var scope = app.Services.CreateScope())
+{
+    var repo = scope.ServiceProvider.GetRequiredService<IChatHistoryRepository>();
+    await repo.InitializeAsync();
 }
 
-logger.LogInformation("JARVIS finalizado.");
+app.MapGet("/health", () => Results.Ok(new { ok = true, service = "jarvis", utc = DateTime.UtcNow }));
+
+app.MapPost("/chat", async (
+    ChatRequest req,
+    IMultimodalInputService multimodal,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Message))
+        return Results.BadRequest(new { error = "message is required" });
+
+    var sessionId = string.IsNullOrWhiteSpace(req.SessionId) ? "default" : req.SessionId!;
+    var result = await multimodal.HandleAsync(sessionId, req.Message, ct);
+
+    return Results.Ok(new ChatResponse(
+        result.SessionId,
+        result.Message
+    ));
+});
+
+app.MapPost("/tts", async (
+    TtsRequest req,
+    ITextToSpeechService tts,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Text))
+        return Results.BadRequest(new { error = "text is required" });
+
+    await tts.SynthesizeAsync(req.Text, ct);
+    return Results.Ok(new { ok = true });
+});
+
+app.Run("http://127.0.0.1:5077");
+
+public sealed record ChatRequest(string? SessionId, string Message);
+public sealed record ChatResponse(string SessionId, string Message);
+public sealed record TtsRequest(string Text);
