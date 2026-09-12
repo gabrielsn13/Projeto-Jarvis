@@ -1,4 +1,5 @@
 using Jarvis.Application.Abstractions;
+using Jarvis.Infrastructure.Commands;
 using Jarvis.Infrastructure.Llm;
 using Jarvis.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IChatHistoryRepository, SqliteChatHistoryRepository>();
+        services.AddScoped<ICommandExecutor, WindowsCommandExecutor>();
 
         return services;
     }

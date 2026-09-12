@@ -6,6 +6,7 @@ Guia oficial de desenvolvimento incremental do assistente pessoal de IA JARVIS.
 
 - ✅ Fase 0 (fundação) iniciada
 - ✅ MVP inicial da Fase 1 implementado (chat local via console)
+- ✅ Fase 2 (comandos locais seguros) implementada
 - ⏳ Próximo passo: UI WPF mínima e evolução dos módulos de voz
 
 ## Stack inicial
@@ -159,3 +160,15 @@ dotnet run --project /home/runner/work/Projeto-Jarvis/Projeto-Jarvis/src/Jarvis.
 ```
 
 Digite mensagens no terminal. Para sair, use `sair`.
+
+### Comandos locais permitidos (Parte 2)
+
+Use o formato `/cmd <identificador>`:
+
+- `/cmd abrir_notepad`
+- `/cmd abrir_calculadora`
+- `/cmd mostrar_data_hora`
+
+Exemplo de comando bloqueado (fora da allowlist):
+
+- `/cmd abrir_cmd`
