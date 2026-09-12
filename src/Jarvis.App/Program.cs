@@ -20,8 +20,22 @@ builder.Services.AddLogging(logging =>
 builder.Services
     .AddJarvisApplication()
     .AddJarvisInfrastructure(builder.Configuration);
+
 builder.Services.Configure<VoiceOptions>(builder.Configuration.GetSection(VoiceOptions.SectionName));
-builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
+
+// Seleção de STT por configuração
+var voiceSection = builder.Configuration.GetSection(VoiceOptions.SectionName);
+var sttProvider = voiceSection["SttProvider"] ?? "Console";
+
+if (string.Equals(sttProvider, "Whisper", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<ISpeechToTextService, WhisperSpeechToTextService>();
+}
+else
+{
+    builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
+}
+
 builder.Services.AddSingleton<ITextToSpeechService, PowerShellTextToSpeechService>();
 builder.Services.AddSingleton<IVoiceModeState>(serviceProvider =>
 {
@@ -34,6 +48,10 @@ using var host = builder.Build();
 using var scope = host.Services.CreateScope();
 var provider = scope.ServiceProvider;
 var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
+
+// Log útil para validar em runtime
+logger.LogInformation("STT provider selecionado: {Provider}", sttProvider);
+
 var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatHistoryRepository>();
 var multimodalInputService = provider.GetRequiredService<IMultimodalInputService>();
 var sessionId = "default";
