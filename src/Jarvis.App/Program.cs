@@ -23,10 +23,12 @@ builder.Services
 
 builder.Services.Configure<VoiceOptions>(builder.Configuration.GetSection(VoiceOptions.SectionName));
 
-// Seleção de STT por configuração
+// Lê providers do bloco Voice
 var voiceSection = builder.Configuration.GetSection(VoiceOptions.SectionName);
 var sttProvider = voiceSection["SttProvider"] ?? "Console";
+var ttsProvider = voiceSection["TtsProvider"] ?? "PowerShell";
 
+// STT
 if (string.Equals(sttProvider, "Whisper", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddSingleton<ISpeechToTextService, WhisperSpeechToTextService>();
@@ -36,7 +38,17 @@ else
     builder.Services.AddSingleton<ISpeechToTextService, ConsolePushToTalkSpeechToTextService>();
 }
 
-builder.Services.AddSingleton<ITextToSpeechService, PowerShellTextToSpeechService>();
+// TTS
+if (string.Equals(ttsProvider, "Edge", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<ITextToSpeechService, EdgeTextToSpeechService>();
+}
+else
+{
+    builder.Services.AddSingleton<ITextToSpeechService, PowerShellTextToSpeechService>();
+}
+
+// Estado de voz
 builder.Services.AddSingleton<IVoiceModeState>(serviceProvider =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<VoiceOptions>>().Value;
@@ -49,10 +61,10 @@ using var scope = host.Services.CreateScope();
 var provider = scope.ServiceProvider;
 var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
 
-// Log útil para validar em runtime
 logger.LogInformation("STT provider selecionado: {Provider}", sttProvider);
+logger.LogInformation("TTS provider selecionado: {Provider}", ttsProvider);
 
-var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatHistoryRepository>();
+var repository = provider.GetRequiredService<IChatHistoryRepository>();
 var multimodalInputService = provider.GetRequiredService<IMultimodalInputService>();
 var sessionId = "default";
 
@@ -85,6 +97,11 @@ while (true)
     {
         logger.LogWarning(ex, "Falha no fluxo de chat.");
         Console.WriteLine($"Jarvis: {ex.Message}");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Erro inesperado no fluxo principal.");
+        Console.WriteLine("Jarvis: Ocorreu um erro inesperado. Veja os logs.");
     }
 }
 

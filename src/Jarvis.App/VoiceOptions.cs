@@ -16,4 +16,11 @@ public sealed class VoiceOptions
     public string? PythonExecutablePath { get; set; } = "python";
     public string? WhisperScriptPath { get; set; } = "scripts/stt_whisper.py";
     public string? WhisperModel { get; set; } = "base";
+
+    public string? TtsProvider { get; set; } = "PowerShell"; // PowerShell | Edge
+    public string? EdgeTtsScriptPath { get; set; } = "scripts/tts_edge.py";
+    public string? EdgeVoice { get; set; } = "pt-BR-AntonioNeural";
+    public string? EdgeRate { get; set; } = "+0%";
+    public string? EdgeVolume { get; set; } = "+0%";
+    public string? EdgePitch { get; set; } = "+0Hz";
 }
