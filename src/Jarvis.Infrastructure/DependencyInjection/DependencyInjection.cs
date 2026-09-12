@@ -10,15 +10,17 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddJarvisInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<JarvisOptions>(configuration.GetSection(JarvisOptions.SectionName));
+        services.Configure<OllamaOptions>(configuration.GetSection(OllamaOptions.SectionName));
+        services.Configure<SqliteOptions>(configuration.GetSection(SqliteOptions.SectionName));
 
-        services.AddHttpClient<ILocalLlmClient, OllamaLocalLlmClient>((serviceProvider, client) =>
+        services.AddHttpClient<ILLMProvider, OllamaProvider>((serviceProvider, client) =>
         {
-            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<JarvisOptions>>().Value;
-            client.BaseAddress = new Uri(options.OllamaBaseUrl);
+            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OllamaOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
 
-        services.AddScoped<IChatRepository, SqliteChatRepository>();
+        services.AddScoped<IChatHistoryRepository, SqliteChatHistoryRepository>();
 
         return services;
     }
