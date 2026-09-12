@@ -16,7 +16,7 @@ public sealed class WindowsCommandExecutor : ICommandExecutor
             {
                 CommandId = commandId,
                 Status = CommandExecutionStatus.Success,
-                Message = $"Data e hora locais: {DateTime.Now:dd/MM/yyyy HH:mm:ss}"
+                Message = $"Comando executado com sucesso. Data e hora locais: {DateTime.Now:dd/MM/yyyy HH:mm:ss}"
             }),
             _ => Task.FromResult(new CommandExecutionResult
             {

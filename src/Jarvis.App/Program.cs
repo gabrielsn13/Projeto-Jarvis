@@ -24,8 +24,7 @@ using var scope = host.Services.CreateScope();
 var provider = scope.ServiceProvider;
 var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("Jarvis.App");
 var repository = provider.GetRequiredService<Jarvis.Application.Abstractions.IChatHistoryRepository>();
-var chatService = provider.GetRequiredService<IChatService>();
-var commandService = provider.GetRequiredService<ICommandService>();
+var inputHandlingService = provider.GetRequiredService<IInputHandlingService>();
 const string sessionId = "default";
 
 await repository.InitializeAsync();
@@ -47,17 +46,10 @@ while (true)
         continue;
     }
 
-    if (TryParseCommand(input, out var commandId))
-    {
-        var commandResult = await commandService.ExecuteAsync(commandId);
-        Console.WriteLine($"Jarvis: {commandResult.Message}");
-        continue;
-    }
-
     try
     {
-        var response = await chatService.SendMessageAsync(sessionId, input);
-        Console.WriteLine($"Jarvis: {response.Content}");
+        var result = await inputHandlingService.HandleAsync(sessionId, input);
+        Console.WriteLine($"Jarvis: {result.Message}");
     }
     catch (InvalidOperationException ex)
     {
@@ -67,16 +59,3 @@ while (true)
 }
 
 logger.LogInformation("JARVIS finalizado.");
-
-static bool TryParseCommand(string input, out string commandId)
-{
-    commandId = string.Empty;
-
-    if (!input.StartsWith("/cmd", StringComparison.OrdinalIgnoreCase))
-    {
-        return false;
-    }
-
-    commandId = input["/cmd".Length..].Trim();
-    return true;
-}
