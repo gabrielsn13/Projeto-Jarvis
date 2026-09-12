@@ -21,14 +21,16 @@ public sealed class InputHandlingService(
         {
             case InputIntent.Command:
             {
-                var commandResult = await commandService.ExecuteAsync(route.NormalizedCommand ?? string.Empty, cancellationToken);
+                var commandId = route.NormalizedCommand
+                    ?? throw new InvalidOperationException("Roteamento de comando sem comando normalizado.");
+                var commandResult = await commandService.ExecuteAsync(commandId, cancellationToken);
                 result = new InputHandlingResult
                 {
                     Message = BuildCommandMessage(commandResult),
                     Decision = commandResult.Status == CommandExecutionStatus.Success
                         ? InputHandlingDecision.Executed
                         : InputHandlingDecision.Blocked,
-                    NormalizedCommand = route.NormalizedCommand
+                    NormalizedCommand = commandId
                 };
                 break;
             }
@@ -66,9 +68,14 @@ public sealed class InputHandlingService(
     {
         if (commandResult.Status == CommandExecutionStatus.Success)
         {
+            if (string.IsNullOrWhiteSpace(commandResult.Message))
+            {
+                return "Comando executado com sucesso.";
+            }
+
             return commandResult.Message.StartsWith("Comando executado com sucesso.", StringComparison.OrdinalIgnoreCase)
                 ? commandResult.Message
-                : $"Comando executado com sucesso. {commandResult.Message}";
+                : $"Comando executado com sucesso. {commandResult.Message.Trim()}";
         }
 
         if (commandResult.Status == CommandExecutionStatus.Blocked)
@@ -76,6 +83,8 @@ public sealed class InputHandlingService(
             return UnknownCommandMessage;
         }
 
-        return commandResult.Message;
+        return string.IsNullOrWhiteSpace(commandResult.Message)
+            ? "Não foi possível executar o comando no momento."
+            : commandResult.Message;
     }
 }

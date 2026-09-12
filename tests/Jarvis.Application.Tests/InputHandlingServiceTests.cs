@@ -43,6 +43,57 @@ public sealed class InputHandlingServiceTests
         Assert.Equal(1, chatService.CallCount);
     }
 
+    [Fact]
+    public async Task HandleAsync_ShouldCallCommandService_WhenIntentIsValidCommand()
+    {
+        var chatService = new FakeChatService();
+        var commandService = new FakeCommandService();
+        var service = new InputHandlingService(
+            new IntentRouter(new AllowlistCommandCatalog()),
+            chatService,
+            commandService,
+            NullLogger<InputHandlingService>.Instance);
+
+        var result = await service.HandleAsync("default", "/CMD ABRIR_NOTEPAD");
+
+        Assert.Equal(InputHandlingDecision.Executed, result.Decision);
+        Assert.Equal("Comando executado com sucesso.", result.Message);
+        Assert.Equal(1, commandService.CallCount);
+        Assert.Equal("abrir_notepad", commandService.LastCommandId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldPrefixSuccessMessage_WhenCommandReturnsCustomSuccessMessage()
+    {
+        var chatService = new FakeChatService();
+        var commandService = new FakeCommandService(CommandExecutionStatus.Success, "Data e hora locais: 10/09/2026 10:00:00");
+        var service = new InputHandlingService(
+            new IntentRouter(new AllowlistCommandCatalog()),
+            chatService,
+            commandService,
+            NullLogger<InputHandlingService>.Instance);
+
+        var result = await service.HandleAsync("default", "/cmd mostrar_data_hora");
+
+        Assert.Equal("Comando executado com sucesso. Data e hora locais: 10/09/2026 10:00:00", result.Message);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldNotDuplicatePrefix_WhenCommandAlreadyReturnsPrefixedSuccessMessage()
+    {
+        var chatService = new FakeChatService();
+        var commandService = new FakeCommandService(CommandExecutionStatus.Success, "Comando executado com sucesso. Data e hora locais: 10/09/2026 10:00:00");
+        var service = new InputHandlingService(
+            new IntentRouter(new AllowlistCommandCatalog()),
+            chatService,
+            commandService,
+            NullLogger<InputHandlingService>.Instance);
+
+        var result = await service.HandleAsync("default", "/cmd mostrar_data_hora");
+
+        Assert.Equal("Comando executado com sucesso. Data e hora locais: 10/09/2026 10:00:00", result.Message);
+    }
+
     private sealed class FakeChatService : IChatService
     {
         public int CallCount { get; private set; }
@@ -54,15 +105,23 @@ public sealed class InputHandlingServiceTests
         }
     }
 
-    private sealed class FakeCommandService : ICommandService
+    private sealed class FakeCommandService(
+        CommandExecutionStatus status = CommandExecutionStatus.Success,
+        string message = "Comando executado com sucesso.") : ICommandService
     {
+        public int CallCount { get; private set; }
+        public string? LastCommandId { get; private set; }
+
         public Task<CommandExecutionResult> ExecuteAsync(string commandId, CancellationToken cancellationToken = default)
         {
+            CallCount++;
+            LastCommandId = commandId;
+
             return Task.FromResult(new CommandExecutionResult
             {
                 CommandId = commandId,
-                Status = CommandExecutionStatus.Success,
-                Message = "Comando executado com sucesso."
+                Status = status,
+                Message = message
             });
         }
     }

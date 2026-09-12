@@ -18,7 +18,15 @@ public sealed class IntentRouter(ICommandCatalog commandCatalog) : IIntentRouter
             };
         }
 
-        if (trimmedInput.Length == CommandPrefix.Length || !char.IsWhiteSpace(trimmedInput[CommandPrefix.Length]))
+        if (trimmedInput.Length > CommandPrefix.Length && !char.IsWhiteSpace(trimmedInput[CommandPrefix.Length]))
+        {
+            return new IntentRoutingResult
+            {
+                Intent = InputIntent.Chat
+            };
+        }
+
+        if (trimmedInput.Length == CommandPrefix.Length)
         {
             return new IntentRoutingResult
             {

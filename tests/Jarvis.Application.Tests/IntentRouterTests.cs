@@ -50,4 +50,13 @@ public sealed class IntentRouterTests
         Assert.Equal(Jarvis.Application.Models.InputIntent.Command, result.Intent);
         Assert.Equal("mostrar_data_hora", result.NormalizedCommand);
     }
+
+    [Fact]
+    public void Classify_ShouldFallbackToChat_WhenPrefixIsNotIsolated()
+    {
+        var result = _router.Classify("/cmdmostrar_data_hora");
+
+        Assert.Equal(Jarvis.Application.Models.InputIntent.Chat, result.Intent);
+        Assert.Null(result.NormalizedCommand);
+    }
 }
