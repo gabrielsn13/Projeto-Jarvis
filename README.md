@@ -1,13 +1,13 @@
 # Projeto Jarvis
 
-Guia oficial de desenvolvimento incremental do assistente pessoal de IA JARVIS.
+Assistente pessoal local em .NET 8, com foco em segurança, previsibilidade e evolução incremental.
 
 ## Status atual da implementação
 
-- ✅ Fase 0 (fundação) iniciada
-- ✅ MVP inicial da Fase 1 implementado (chat local via console)
-- ✅ Fase 2 (comandos locais seguros) implementada
-- ⏳ Próximo passo: UI WPF mínima e evolução dos módulos de voz
+- ✅ Fase A (fundação + conversação base) concluída
+- ✅ Fase B (comandos locais seguros) concluída
+- 🔄 Fase C (memória de sessão e contexto curto) em andamento
+- ⏭️ Próximo passo: Fase D (voz STT/TTS)
 
 ## Stack inicial
 
@@ -26,7 +26,7 @@ Guia oficial de desenvolvimento incremental do assistente pessoal de IA JARVIS.
 - Visão computacional
 - Realidade aumentada
 
-## Objetivos do produto (roadmap)
+## Objetivos do produto (roadmap macro)
 
 1. Conversação com IA
 2. Execução de comandos no computador
@@ -102,47 +102,84 @@ Ao usar os termos abaixo, explicar brevemente o conceito antes de aplicar:
 - Seguir o roadmap do projeto
 - Não implementar funcionalidades futuras sem necessidade da etapa atual
 
-## Cronograma inicial (12 semanas)
+## Roadmap reajustado (v2) — 12 semanas
 
-### Fase 0 (Semana 1) — Fundação
+### Fase A (Semanas 1–2) — Fundação + Conversação base ✅
 
-- Estrutura da solução .NET 8, camadas e DI
-- Configuração central via `appsettings.json` e logging
-- Persistência SQLite para histórico simples
+- Estrutura .NET 8 em camadas + DI
+- Configuração central (`appsettings`) + logging
+- Integração Ollama (chat texto)
+- Interface mínima de conversa
+- Contexto curto inicial (quando aplicável)
 
-### Fase 1 (Semanas 2–3) — Conversação com IA
+**Saída esperada:** Jarvis funcional em texto, arquitetura limpa.
 
-- Integração com LLM local via Ollama
-- Serviço de chat com contexto curto
-- Interface mínima para troca de mensagens
+### Fase B (Semanas 3–4) — Comandos seguros no Windows ✅
 
-### Fase 2 (Semanas 4–5) — Comandos no computador
+- Catálogo inicial de comandos permitidos
+- Prefixo explícito `/cmd <comando>`
+- Roteamento determinístico (chat vs comando)
+- Bloqueio de comando inválido (não encaminhar ao LLM)
+- Logs estruturados + testes unitários
 
-- Catálogo inicial de comandos seguros
-- Fluxo de autorização/validação
-- Logs e tratamento de falhas
+**Saída esperada:** execução local segura e previsível.
 
-### Fase 3 (Semanas 6–7) — Reconhecimento e síntese de voz
+### Fase C (Semanas 5–6) — Memória curta e sessões 🔄 (em andamento)
 
-- STT (fala para texto)
-- TTS (texto para fala)
+- Memória por `sessionId`
+- Janela de contexto (últimas N mensagens)
+- Truncamento de mensagens longas
+- Comando `/new` para resetar sessão
+- Regras iniciais de retenção local (TTL simples)
+- Testes de regressão de contexto
+
+**Saída esperada:** conversa mais coerente e controlada.
+
+### Fase D (Semanas 7–8) — Voz (STT/TTS) sem hotword
+
+- STT (fala → texto) com push-to-talk
+- TTS (texto → fala) configurável
 - Modo alternável texto/voz
+- Tratamento de erros de microfone/dispositivo
+- Logs de pipeline de áudio
 
-### Fase 4 (Semana 8) — Hotword "Jarvis"
+**Saída esperada:** experiência multimodal estável, sem escuta contínua.
 
-- Escuta contínua controlada
+### Fase E (Semana 9) — Hotword "Jarvis"
+
+- Escuta contínua controlada (opt-in)
 - Ativação por palavra-chave
+- Cooldown, sensibilidade e mitigação de falsos positivos
+- Indicadores claros de estado (ouvindo/idle)
 
-### Fase 5 (Semanas 9–10) — Memória
+**Saída esperada:** ativação por voz com segurança operacional.
 
-- Memória de sessão e preferências básicas
-- Regras de retenção e privacidade local
+### Fase F (Semanas 10–11) — Automações úteis + hardening
 
-### Fase 6 (Semanas 11–12) — Automação inicial e hardening
+- 3–5 automações úteis no Windows (com allowlist)
+- Timeouts, retry e circuit breaker onde fizer sentido
+- Telemetria local mínima (sem dados sensíveis)
+- Revisão de segurança (injeção de prompt/comando)
 
-- Primeiras automações úteis no Windows
-- Revisão de segurança e confiabilidade
-- Preparação para integrações de API
+**Saída esperada:** confiabilidade para uso diário.
+
+### Fase G (Semana 12) — Fechamento e preparação de integrações
+
+- Checklist de qualidade final
+- Documentação de operação e troubleshooting
+- Contratos de integração (APIs futuras)
+- Backlog priorizado da vNext
+
+**Saída esperada:** release estável e plano claro de evolução.
+
+## Gate de qualidade por fase
+
+Avançar de fase somente com:
+
+- `dotnet build` passando
+- Testes da fase passando
+- Demo curta da fase validada
+- Checklist de segurança da fase concluído
 
 ## Como executar o MVP atual
 
