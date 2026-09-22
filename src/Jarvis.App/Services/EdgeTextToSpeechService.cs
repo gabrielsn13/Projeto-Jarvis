@@ -53,7 +53,13 @@ public sealed class EdgeTextToSpeechService(
         var volume = string.IsNullOrWhiteSpace(opts.EdgeVolume) ? "+0%" : opts.EdgeVolume!;
         var pitch = string.IsNullOrWhiteSpace(opts.EdgePitch) ? "+0Hz" : opts.EdgePitch!;
 
-        logger.LogDebug("Edge TTS params voice={Voice}, rate={Rate}, volume={Volume}, pitch={Pitch}", voice, rate, volume, pitch);
+        logger.LogInformation(
+        "Edge TTS params voice={Voice}, rate={Rate}, volume={Volume}, pitch={Pitch}",
+        voice,
+        rate,
+        volume,
+        pitch
+        );
 
         var args =
             $"\"{script}\" --text \"{EscapeArg(text)}\" --voice \"{voice}\" --rate \"{rate}\" --volume \"{volume}\" --pitch \"{pitch}\"";

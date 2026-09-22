@@ -15,6 +15,14 @@ public sealed class OllamaProvider(
 {
     private readonly OllamaOptions _options = options.Value;
 
+    private const string SystemInstruction = """
+        Você é Jarvis, um assistente virtual útil e objetivo.
+        Responda sempre em português do Brasil.
+        Nunca responda em espanhol, a menos que o usuário peça explicitamente uma tradução,
+        uma explicação ou uma resposta em espanhol.
+        Use linguagem natural, clara e concisa.
+        """;
+
     public async Task<string> GenerateResponseAsync(string prompt, IReadOnlyList<ChatMessage> context, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
@@ -22,7 +30,14 @@ public sealed class OllamaProvider(
         var payload = new OllamaGenerateRequest
         {
             Model = _options.Model,
-            Prompt = prompt,
+            Prompt = $"""
+                {SystemInstruction}
+
+                Mensagem do usuário:
+                {prompt}
+
+                Resposta do Jarvis:
+                """,
             Stream = false
         };
 

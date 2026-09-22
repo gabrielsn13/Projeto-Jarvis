@@ -8,11 +8,9 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 // Services existentes
-builder.Services
-    .AddJarvisApplication()
-    .AddJarvisInfrastructure(builder.Configuration);
-
+builder.Services.AddJarvisApplication().AddJarvisInfrastructure(builder.Configuration);
 builder.Services.Configure<VoiceOptions>(builder.Configuration.GetSection(VoiceOptions.SectionName));
+builder.Services.AddHttpClient();
 
 // Providers
 var voiceSection = builder.Configuration.GetSection(VoiceOptions.SectionName);
